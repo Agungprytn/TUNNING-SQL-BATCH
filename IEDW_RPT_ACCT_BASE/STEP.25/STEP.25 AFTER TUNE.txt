@@ -1,0 +1,22 @@
+MERGE INTO IEDW_RPT_ACCT_BASE A
+   USING (     
+		SELECT /*+ LEADING(C B) USE_HASH(C B) PARALLEL(C 4) FULL(C) PARALLEL(B 4) FULL(B) */
+			B.REF_NO
+		,   B.BASC_DT    
+		,   B.AGR_REF_NO       AS NEW_AGR_NO  -- 약정번호
+		,   C.CONTRACT_AMT     AS NEW_AGR_AMT -- 약정금액
+		FROM   
+			IDSS_ADST_LNB_BASE  B
+		,   IDSS_ADST_LNB_AGR   C
+		WHERE  B.BASC_DT    = :V_PROC_BASC_DT    
+		AND    B.BASC_DT    = C.BASC_DT   
+		AND    B.AGR_REF_NO = C.REF_NO  
+		) B
+   ON ( A.BASC_DT = B.BASC_DT   AND 
+   	    A.SUBJ_CD = 'LN'        AND
+   	    A.REF_NO  = B.REF_NO )                  
+           
+  WHEN MATCHED THEN   
+            UPDATE SET  A.AGR_NO  = B.NEW_AGR_NO 
+                   ,    A.AGR_AMT = B.NEW_AGR_AMT   
+	;

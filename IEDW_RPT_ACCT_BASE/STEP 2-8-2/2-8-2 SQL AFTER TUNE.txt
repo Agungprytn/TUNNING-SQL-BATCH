@@ -1,0 +1,18 @@
+
+MERGE /*+ LEADING(A B) USE_HASH(A B) PARALLEL(A 4) FULL(A) PARALLEL(B 4) FULL(B) */ 
+				INTO IEDW_RPT_ACCT_BASE A
+			  USING  IDSS_ADST_LNB_BASE B
+				ON      ( A.BASC_DT  = :V_PROC_BASC_DT   AND  
+						  A.BASC_DT  = B.BASC_DT        AND            
+						  A.SUBJ_CD  = 'LN'             AND
+						  A.REF_NO   = B.REF_NO                         
+						)                 
+				WHEN MATCHED THEN   
+					UPDATE SET   A.NEW_DT      = TO_CHAR(B.OPEN_IL      ,'YYYYMMDD')    
+					     ,       A.FST_NEW_DT  = TO_CHAR(B.OPEN_IL      ,'YYYYMMDD') 
+					     ,       A.EXP_DT      = TO_CHAR(B.TOT_EXP_IL   ,'YYYYMMDD') 
+					     ,       A.FST_EXP_DT  = TO_CHAR(B.TOT_EXP_IL   ,'YYYYMMDD') 
+					     ,       A.NEW_AMT     = B.FST_LON_AMT                       
+					     ,       A.INT_RT      = B.LST_RT         
+					
+				;

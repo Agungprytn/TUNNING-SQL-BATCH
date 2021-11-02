@@ -1,0 +1,30 @@
+ 
+--Cost: 1,760 Bytes: 741 after tune 
+
+MERGE 
+        INTO IEDW_RPT_ACCT_BASE A
+             USING (    
+            SELECT  /*+ INDEX (A IEDW_MART_DLQY_BASE_PK) */
+                    A.BASC_DT                                      AS BASC_DT
+                ,   A.REF_NO                                       AS REF_NO
+                ,   'Y'                                            AS DLQY_YN
+                ,   MIN(A.DLQY_STRT_DT)                            AS NEW_DLQY_STR_DT
+                ,   CASE WHEN MAX(A.DLQY_DV_CD) != MIN(A.DLQY_DV_CD)
+                        THEN '3'
+                        ELSE MAX(A.DLQY_DV_CD)
+                    END                                          AS NEW_DLQY_DV_CD
+            FROM   IEDW_MART_DLQY_BASE A
+            WHERE  A.BASC_DT = :V_PROC_BASC_DT
+            GROUP BY A.REF_NO
+                   , A.BASC_DT
+            )B    
+    ON  (     A.BASC_DT        = :V_PROC_BASC_DT    
+          AND A.BASC_DT        = B.BASC_DT             
+          AND A.SUBJ_CD        NOT IN ('DP')        
+          AND A.BAL_DTLS_DV_CD IN (SELECT MAX(BAL_DTLS_DV_CD) FROM IEDW_SUBJ_BAL_REL GROUP BY BAL_DTLS_DV_CD) --C101
+          AND A.REF_NO         = B.REF_NO )   
+     WHEN MATCHED THEN   
+          UPDATE SET A.DLQY_STR_DT     = B.NEW_DLQY_STR_DT  
+          ,          A.DLQY_DV_CD      = B.NEW_DLQY_DV_CD  
+          ;
+          

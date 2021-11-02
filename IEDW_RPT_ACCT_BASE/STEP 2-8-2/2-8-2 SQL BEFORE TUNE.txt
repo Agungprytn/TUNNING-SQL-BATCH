@@ -1,0 +1,34 @@
+MERGE INTO IEDW_RPT_ACCT_BASE A
+             USING (     
+                    
+                     SELECT  /*+ LEADING(B A) USE_HASH(B A) */
+                            A.BASC_DT 
+                     ,      A.SUBJ_CD 
+                     ,      A.REF_NO   
+                     --   
+                     ,      TO_CHAR(B.OPEN_IL      ,'YYYYMMDD') AS NEW_NEW_DT    
+                     ,      TO_CHAR(B.OPEN_IL      ,'YYYYMMDD') AS NEW_FST_NEW_DT
+                     ,      TO_CHAR(B.TOT_EXP_IL   ,'YYYYMMDD') AS NEW_EXP_DT    
+                     ,      TO_CHAR(B.TOT_EXP_IL   ,'YYYYMMDD') AS NEW_FST_EXP_DT
+                     ,      B.FST_LON_AMT                       AS NEW_NEW_AMT    
+                     ,      B.LST_RT                            AS NEW_INT_RT
+                     FROM   IEDW_RPT_ACCT_BASE     A
+                     ,      IDSS_ADST_LNB_BASE     B
+                     WHERE  A.BASC_DT = B.BASC_DT
+                     AND    A.REF_NO  = B.REF_NO
+                     AND    A.BASC_DT = :V_PROC_BASC_DT
+                     AND    A.SUBJ_CD = 'LN' 
+             
+                ) B
+             ON      ( A.BASC_DT            = B.BASC_DT        AND 
+                       A.SUBJ_CD            = B.SUBJ_CD        AND
+                       A.REF_NO             = B.REF_NO  )   
+                           
+             WHEN MATCHED THEN   
+             UPDATE SET   A.NEW_DT      = B.NEW_NEW_DT    
+             ,            A.FST_NEW_DT  = B.NEW_FST_NEW_DT
+             ,            A.EXP_DT      = B.NEW_EXP_DT    
+             ,            A.FST_EXP_DT  = B.NEW_FST_EXP_DT
+             ,            A.NEW_AMT     = B.NEW_NEW_AMT    
+             ,            A.INT_RT      = B.NEW_INT_RT  
+             ;

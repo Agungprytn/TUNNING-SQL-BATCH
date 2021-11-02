@@ -1,0 +1,31 @@
+   MERGE INTO IEDW_RPT_ACCT_BASE A
+             USING (          
+                SELECT      /*+ FULL(B) PARALLEL(B 4)*/
+                            B.BASC_DT 
+                     ,      B.ACCT_NO
+                     --    
+                     ,      TO_CHAR(B.LON_CONT_IL      ,'YYYYMMDD') AS NEW_NEW_DT    
+                     ,      TO_CHAR(B.LON_CONT_IL      ,'YYYYMMDD') AS NEW_FST_NEW_DT
+                     ,      TO_CHAR(B.LON_MAN_IL       ,'YYYYMMDD') AS NEW_EXP_DT    
+                     ,      TO_CHAR(B.LON_MAN_IL       ,'YYYYMMDD') AS NEW_FST_EXP_DT
+                     ,      B.LON_SNG_AMT                           AS NEW_NEW_AMT    
+                     ,      B.LON_RT                                AS NEW_INT_RT
+                     ,      ROW_NUMBER() OVER (PARTITION BY B.ACCT_NO ORDER BY B.LON_CONT_IL DESC, B.STS) AS SEQ
+                     FROM  IDSS_ADST_DPB_LNIF B
+                    WHERE  B.BASC_DT = :V_PROC_BASC_DT   
+                    ) B 
+                ON (                              
+                            A.BASC_DT = :V_PROC_BASC_DT
+                     AND    A.REF_NO  = B.ACCT_NO
+                     AND    A.BASC_DT = B.BASC_DT
+                     AND    A.SUBJ_CD = 'LN' 
+                     AND    B.SEQ     = 1 )
+                            
+             WHEN MATCHED THEN   
+                    UPDATE SET  A.NEW_DT      = B.NEW_NEW_DT    
+                           ,    A.FST_NEW_DT  = B.NEW_FST_NEW_DT
+                           ,    A.EXP_DT      = B.NEW_EXP_DT    
+                           ,    A.FST_EXP_DT  = B.NEW_FST_EXP_DT
+                           ,    A.NEW_AMT     = B.NEW_NEW_AMT    
+                           ,    A.INT_RT      = B.NEW_INT_RT  
+                    ;  

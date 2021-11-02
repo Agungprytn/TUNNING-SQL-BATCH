@@ -1,0 +1,44 @@
+
+--Cost: 84,779 Bytes: 280,371 before tune 
+
+          MERGE INTO IEDW_RPT_ACCT_BASE A
+             USING (     
+                    
+                    SELECT /*+ USE_NL(A B ) */
+                           A.BASC_DT 
+                    ,      A.SUBJ_CD 
+                    ,      A.REF_NO   
+                    --   
+                    ,      B.DLQY_STR_DT   AS NEW_DLQY_STR_DT    -- 연체시작일
+                    ,      B.DLQY_DV_CD    AS NEW_DLQY_DV_CD      -- 원금연체구분코드
+                    FROM   IEDW_RPT_ACCT_BASE A
+                    ,      (
+                            SELECT REF_NO            AS  REF_NO
+                            ,      'Y'               AS  DLQY_YN
+                            ,      MIN(DLQY_STRT_DT) AS  DLQY_STR_DT
+                            ,      CASE WHEN MAX(DLQY_DV_CD) != MIN(DLQY_DV_CD)
+                                        THEN '3'
+                                        ELSE MAX(DLQY_DV_CD)
+                                   END               AS  DLQY_DV_CD
+                            FROM   IEDW_MART_DLQY_BASE
+                            WHERE  BASC_DT    =  :V_PROC_BASC_DT
+                            GROUP BY REF_NO
+                            ) B
+                    WHERE   A.REF_NO       = B.REF_NO
+                    AND     A.BASC_DT      = :V_PROC_BASC_DT
+                    AND     A.SUBJ_CD NOT IN ('DP')
+                    AND     A.BAL_DTLS_DV_CD  IN (
+                                                  SELECT BAL_DTLS_DV_CD
+                                                  FROM   IEDW_SUBJ_BAL_REL
+                                                 )
+                    
+                    
+                ) B
+             ON      ( A.BASC_DT            = B.BASC_DT        AND 
+                       A.SUBJ_CD            = B.SUBJ_CD        AND
+                       A.REF_NO             = B.REF_NO  )   
+                           
+             WHEN MATCHED THEN   
+             UPDATE SET   A.DLQY_STR_DT     = B.NEW_DLQY_STR_DT  
+             ,            A.DLQY_DV_CD      = B.NEW_DLQY_DV_CD  
+             ;

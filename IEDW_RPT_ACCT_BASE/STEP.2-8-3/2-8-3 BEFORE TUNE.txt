@@ -1,0 +1,39 @@
+     MERGE INTO IEDW_RPT_ACCT_BASE A
+             USING (     
+                    
+                     SELECT  
+                            A.BASC_DT 
+                     ,      A.SUBJ_CD 
+                     ,      A.REF_NO   
+                     --    
+                     ,      TO_CHAR(B.LON_CONT_IL      ,'YYYYMMDD') AS NEW_NEW_DT    
+                     ,      TO_CHAR(B.LON_CONT_IL      ,'YYYYMMDD') AS NEW_FST_NEW_DT
+                     ,      TO_CHAR(B.LON_MAN_IL       ,'YYYYMMDD') AS NEW_EXP_DT    
+                     ,      TO_CHAR(B.LON_MAN_IL       ,'YYYYMMDD') AS NEW_FST_EXP_DT
+                     ,      B.LON_SNG_AMT                           AS NEW_NEW_AMT    
+                     ,      B.LON_RT                                AS NEW_INT_RT
+                     FROM   IEDW_RPT_ACCT_BASE     A
+                     ,      ( SELECT A.*
+                              ,      ROW_NUMBER() OVER (PARTITION BY ACCT_NO ORDER BY LON_CONT_IL DESC, STS  ) AS SEQ
+                              FROM   IDSS_ADST_DPB_LNIF A
+                              WHERE  BASC_DT = :V_PROC_BASC_DT
+                            ) B
+                     WHERE  A.BASC_DT = B.BASC_DT
+                     AND    A.REF_NO  = B.ACCT_NO
+                     AND    A.BASC_DT = :V_PROC_BASC_DT
+                     AND    A.SUBJ_CD = 'LN' 
+                     AND    B.SEQ     = 1
+             
+                ) B
+             ON      ( A.BASC_DT            = B.BASC_DT        AND 
+                       A.SUBJ_CD            = B.SUBJ_CD        AND
+                       A.REF_NO             = B.REF_NO  )   
+                           
+             WHEN MATCHED THEN   
+             UPDATE SET   A.NEW_DT      = B.NEW_NEW_DT    
+             ,            A.FST_NEW_DT  = B.NEW_FST_NEW_DT
+             ,            A.EXP_DT      = B.NEW_EXP_DT    
+             ,            A.FST_EXP_DT  = B.NEW_FST_EXP_DT
+             ,            A.NEW_AMT     = B.NEW_NEW_AMT    
+             ,            A.INT_RT      = B.NEW_INT_RT  
+             ;
